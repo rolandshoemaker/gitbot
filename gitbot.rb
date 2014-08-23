@@ -69,24 +69,24 @@ post "/hook" do
 		tag = push["ref"].gsub(/^refs\/tags\//,"")
 		if branch != push["ref"]
 			if push["commits"]
-				say repo, "(new push) #{push["commits"][0]["message"]} (#{push["commits"][0]["id"].slice!(0..6)}) by \0033#{push["commits"][0]["author"]["name"]}\003 in \0037#{repo}\003 \[\0030#{branch}\003\]"
+				say repo, "(new push) #{push["commits"][0]["message"]} (#{push["commits"][0]["id"].slice!(0..6)}) added by \0033#{push["commits"][0]["author"]["name"]}\003 in \0037#{repo}\003 \[\0030#{branch}\003\]"
 			else
-				say repo, "(new branch) \[\0030#{branch}\003\] by \0033#{push["user_name"]}\003 in \0037#{repo}\003"
+				say repo, "(new branch) \[\0030#{branch}\003\] added by \0033#{push["user_name"]}\003 in \0037#{repo}\003"
 			end
 		elsif tag != push["ref"]
-			say repo, "(new tag) \[\0030#{tag}\003\] by \0033#{push["user_name"]}\003 in \0037#{repo}\003"
+			say repo, "(new tag) \[\0030#{tag}\003\] added by \0033#{push["user_name"]}\003 in \0037#{repo}\003"
 		end
 	end
 
 	# issue stuff
 	if push["object_kind"] == "issue"
 		if push["object_attributes"]["state"] == "opened"
+			pid = push["object_attributes"]["project_id"]
+			repo = Gitlab.project(pid).name
+			username = Gitlab.user(push["object_attributes"]["author_id"]).username
+			issue_link = "http://#{$config["gitlab"]["host"]}/#{username}/#{repo}/issues/#{push["object_attributes"]["iid"]}"
 			if push["object_attributes"]["created_at"] == push["object_attributes"]["updated_at"]
-				pid = push["object_attributes"]["project_id"]
-				repo = Gitlab.project(pid).name
-				username = Gitlab.user(push["object_attributes"]["author_id"]).username
-				issue_link = "http://#{$config["gitlab"]["host"]}/#{username}/#{repo}/issues/#{push["object_attributes"]["iid"]}"
-				say repo, "(new issue) #{push["object_attributes"]["title"]} by \0033#{Gitlab.user(push["object_attributes"]["author_id"]).name}\003 [\##{push["object_attributes"]["iid"]} in \0037#{repo}\003] (#{issue_link})"
+				say repo, "(new issue) #{push["object_attributes"]["title"]} added by \0033#{Gitlab.user(push["object_attributes"]["author_id"]).name}\003 [\##{push["object_attributes"]["iid"]} in \0037#{repo}\003] (#{issue_link})"
 			else
 				# something has been updated, let's investigate...
 			end
