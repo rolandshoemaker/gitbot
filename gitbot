@@ -2,6 +2,7 @@
 
 require "date"
 require "cinch"
+require "cinch/plugins/identify"
 require "sinatra"
 require "yaml"
 require "json"
@@ -18,11 +19,17 @@ $config = YAML.load_file config_file
 $bot = Cinch::Bot.new do
   configure do |c|
     c.nick = $config["irc"]["nick"]
+    #c.password = $config["irc"]["password"]
     c.user = "gitbot"
     c.realname = "GitBot"
     c.server = $config["irc"]["server"]
     c.port = $config["irc"]["port"]
     c.channels = $config["irc"]["channels"]
+    c.plugins.plugins = [Cinch::Plugins::Identify]
+    c.plugins.options[Cinch::Plugins::Identify] = {
+        :password	=> $config["irc"]["password"],
+	:type		=> :nickserv,
+    }
   end
 end
 
@@ -50,38 +57,40 @@ get "/" do
 end
 
 post "/github" do
-  p params[:payload]
-  push = JSON.parse(params[:payload])
+  jsoncont = request.body.read
+  p jsoncont
+  push = JSON.parse(jsoncont)
 
   repo = push["repository"]["name"]
   branch = push["ref"].gsub(/^refs\/heads\//,"")
 
   # sort commits by timestamp
-  push["commits"].sort! do |a,b|
-    ta = tb = nil
-    begin
-      ta = DateTime.parse(a["timestamp"])
-    rescue ArgumentError
-      ta = Time.at(a["timestamp"].to_i)
-    end
+  #push["commits"].sort! do |a,b|
+  #  ta = tb = nil
+  #  begin
+  #    ta = DateTime.parse(a["timestamp"])
+  #  rescue ArgumentError
+  #    ta = Time.at(a["timestamp"].to_i)
+  #  end
 
-    begin
-      tb = DateTime.parse(b["timestamp"])
-    rescue ArgumentError
-      tb = Time.at(b["timestamp"].to_i)
-    end
+  #  begin
+  #    tb = DateTime.parse(b["timestamp"])
+  #  rescue ArgumentError
+  #    tb = Time.at(b["timestamp"].to_i)
+  #  end
     
-    ta <=> tb
-  end
+  #  ta <=> tb
+  #end
 
-  # output first 3 commits
-  push["commits"][0..2].each do |c|
-    say repo, "\0030#{repo}:\0037 #{branch}\0033 #{c["author"]["name"]}\003 #{c["message"]}"
-  end
+  # new push
+  say repo, "new commit - \0030#{repo}\003 \[\0037#{branch}\003\] by \0033#{push["commits"][0]["author"]["name"]}\003 (#{push["commits"][0]["id"].slice!(0..6)}) #{push["commits"][0]["message"]}"
 
-  if push["commits"].length-2 > 0
-    say repo, "\0030#{repo}:\0037 #{branch}\003 ... and #{push["commits"].length-2} more"
-  end
+  # new tag push
+
+
+  # new issue
+
+  # new merge request
 
   push.inspect
 end
